@@ -17,13 +17,21 @@ OpenCode, so it reaches any OpenAI-compatible endpoint through a provider in
   "provider": {
     "magpie": {
       "name": "magpie",
-      "npm": "@ai-sdk/openai",
+      "npm": "@ai-sdk/openai-compatible",
       "options": {
         "baseURL": "http://127.0.0.1:3425/v1",
         "apiKey": "magpie-kilo"
       },
       "models": {
-        "deepseek/deepseek-flash": { "name": "…", "tool_call": true, "limit": { "context": 1000000, "output": 393216 } }
+        "deepseek/deepseek-flash": {
+          "name": "DeepSeek Flash",
+          "tool_call": true,
+          "limit": { "context": 1000000, "output": 393216 },
+          "variants": {
+            "high": { "reasoningEffort": "high" },
+            "max": { "reasoningEffort": "max" }
+          }
+        }
       }
     }
   },
@@ -35,6 +43,10 @@ Kilo names a model `<provider>/<model>`, so magpie's own id is written after the
 `magpie/` prefix. The provider, its address, its key and every model are written
 because Kilo has no catalog of its own for a gateway: its model picker reads the
 models listed under the provider. Your comments and other settings stay.
+Requests use the Chat Completions API. Reasoning variants follow each model's
+own levels, weakest first; models without levels have an empty variants set.
+Image-capable models also declare image inputs and attachment support. Unknown
+context windows are omitted from the configuration.
 Picking Kilo's own model again, or switching it off, puts every key back as it
 was. Restart Kilo after a change: it reads its settings when it starts.
 

@@ -33,21 +33,34 @@ export const agent = {
 // Kilo has no model catalog of its own for a gateway like magpie, so the
 // provider, its address and every model have to be written beside the
 // model itself; `models` is each one magpie offers Kilo.
+// Kilo lists variants in key order, weakest first.
+const ORDER = ["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"]
+const rank = (effort) => (ORDER.indexOf(effort) < 0 ? ORDER.length : ORDER.indexOf(effort))
+
 export function connect({ gateway, models }) {
   const catalog = {}
   for (const m of models ?? []) {
-    catalog[m.id] = {
-      name: m.name ?? m.id,
-      tool_call: true,
-      reasoning: (m.efforts?.length ?? 0) > 0,
-      limit: { context: m.context ?? 0, output: m.output ?? 0 },
+    const entry = { name: m.name ?? m.id, tool_call: true }
+    if (m.images) {
+      entry.attachment = true
+      entry.modalities = { input: ["text", "image"], output: ["text"] }
     }
+    if (m.context > 0) entry.limit = { context: m.context, output: m.output ?? 0 }
+    // An empty set prevents Kilo from inventing reasoning levels.
+    const variants = {}
+    for (const level of [...new Set(m.efforts ?? [])].sort((a, b) => rank(a) - rank(b))) {
+      variants[level] = { reasoningEffort: level }
+    }
+    entry.variants = variants
+    catalog[m.id] = entry
   }
+  // One key lets magpie restore the whole provider when switching off.
   return {
-    "provider.magpie.name": "magpie",
-    "provider.magpie.npm": "@ai-sdk/openai",
-    "provider.magpie.options.baseURL": gateway.v1,
-    "provider.magpie.options.apiKey": gateway.key,
-    "provider.magpie.models": catalog,
+    "provider.magpie": {
+      name: "magpie",
+      npm: "@ai-sdk/openai-compatible",
+      options: { baseURL: gateway.v1, apiKey: gateway.key },
+      models: catalog,
+    },
   }
 }
